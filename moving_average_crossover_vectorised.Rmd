@@ -1,0 +1,110 @@
+---
+title: "SMA Cross-over strategy - Vectorised backtest"
+author: "Paul Nheera"
+date: "5/26/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Libraries:
+library(readr)
+library(ggplot2)
+library(quantmod)
+library(dplyr)
+library(PerformanceAnalytics)
+```
+
+
+```{r}
+# Import data:
+data <- read_csv("Kucoin_BTCUSDT_1H_data.csv")
+
+#market_data
+#indicators
+#market_stats - e.g. return, std dev, etc
+```
+
+```{r}
+# Plot the closing price:
+p <- ggplot(data, aes(x=Time,y=Close))+
+  geom_line(col='blue') +
+  ggtitle('Closing price')
+
+p
+```
+
+## Simple Moving Average Cross Over Strategy
+
+```{r}
+# Calculate indicators:
+data$fastSMA = SMA(data$Close,5)
+data$slowSMA = SMA(data$Close,14)
+```
+
+
+```{r}
+# Plot with moving averages:
+p <- ggplot(data, aes(x=Time,y=Close))+
+  geom_line(col='black') +
+  ggtitle('Closing price') +
+  geom_line(aes(x=Time,y=fastSMA), col='red')+
+  geom_line(aes(x=Time,y=slowSMA), col='blue')
+
+p
+```
+
+```{r}
+# Vectorised back test:
+
+position = data.frame(Time = data$Time, Position= ifelse(data$fastSMA > data$slowSMA, 1,-1))
+
+# returns (1 time period returns)
+ret = data.frame(Time=data$Time, Return = ROC(data$Close,n=1,type ='discrete'))
+
+# strategy returns:
+strat_ret = data.frame(Time=position$Time, Return= position$Position * ret$Return)
+```
+
+```{r}
+# Performance analysis:
+
+ggplot(strat_ret, aes(x=Return))+
+  geom_histogram(bins=100, fill='blue')
+
+# add Mean, Mode, Median, Quartiles
+```
+
+
+```{r}
+# Replace NAs with zero
+strat_ret <- strat_ret %>% 
+  mutate(Return = ifelse(is.na(Return),0,Return))
+  
+  
+# Calculate cummulative return
+strat_ret <- strat_ret %>% 
+  mutate(Cum_Ret = cumprod(1 + Return))
+
+# determine start and end date
+indx <- which(strat_ret$Return != 0)
+start_time = strat_ret$Time[indx[1]]
+end_time = strat_ret$Time[nrow(strat_ret)]
+```
+
+```{r}
+# Plot Strategy Performance:
+ggplot(strat_ret, aes(x=Time,y=Cum_Ret)) +
+  geom_line()
+```
+
+```{r}
+# Performance stats:
+
+## Total Cumulative Return:
+total_ret <- strat_ret$Cum_Ret[nrow(strat_ret)]
+```
+
