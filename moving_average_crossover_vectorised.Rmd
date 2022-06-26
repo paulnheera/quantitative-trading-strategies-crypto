@@ -41,8 +41,8 @@ p
 
 ```{r}
 # Calculate indicators:
-data$fastSMA = SMA(data$Close,5)
-data$slowSMA = SMA(data$Close,14)
+data$fastSMA = SMA(data$Close,100)
+data$slowSMA = SMA(data$Close,200)
 ```
 
 
@@ -61,6 +61,9 @@ p
 # Vectorised back test:
 
 position = data.frame(Time = data$Time, Position= ifelse(data$fastSMA > data$slowSMA, 1,-1))
+
+# We need to lag the position vector in a vectorised back test to avoid look ahead bias!
+position$Position = lag(position$Position)
 
 # returns (1 time period returns)
 ret = data.frame(Time=data$Time, Return = ROC(data$Close,n=1,type ='discrete'))
@@ -85,7 +88,7 @@ strat_ret <- strat_ret %>%
   mutate(Return = ifelse(is.na(Return),0,Return))
   
   
-# Calculate cummulative return
+# Calculate cumulative return
 strat_ret <- strat_ret %>% 
   mutate(Cum_Ret = cumprod(1 + Return))
 
@@ -106,5 +109,7 @@ ggplot(strat_ret, aes(x=Time,y=Cum_Ret)) +
 
 ## Total Cumulative Return:
 total_ret <- strat_ret$Cum_Ret[nrow(strat_ret)]
+
+total_ret
 ```
 
