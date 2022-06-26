@@ -20,7 +20,7 @@ config.py
 
 # RStudio files
 .Rproj.user/
-.Rproj
+*.Rproj
 
 # Spyder files
 .spyproject/
