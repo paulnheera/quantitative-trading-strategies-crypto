@@ -1,0 +1,143 @@
+---
+title: "SMA crossover optimization"
+author: "Paul Nheera"
+date: '2022-06-28'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Libraries:
+library(readr)
+library(ggplot2)
+library(plotly)
+library(quantmod)
+library(dplyr)
+library(PerformanceAnalytics)
+```
+
+```{r}
+# import market data
+data <- read_csv("Kucoin_BTCUSDT_1H_data.csv")
+```
+
+
+```{r}
+# Range of SMAs to be tested
+fastSMAs <- seq(5,100,by=5)
+slowSMAs <- seq(10,200,by=10)
+param_data <- expand.grid(fastSMA=fastSMAs, slowSMA=slowSMAs)
+
+# keep only combinations where fastSMA is lower than slowSMA
+param_data <- param_data %>% 
+  filter(fastSMA < slowSMA)
+```
+
+```{r}
+results <- param_data
+results$total_ret = NA
+
+# Run optimization
+for(i in 1:nrow(param_data)) {
+  
+  data$fastSMA = SMA(data$Close,param_data$fastSMA[i])
+  data$slowSMA = SMA(data$Close,param_data$slowSMA[i])
+  
+  # positions
+  pos = data.frame(Time = data$Time, Position= ifelse(data$fastSMA > data$slowSMA, 1,-1))
+  pos$Position = lag(pos$Position)
+  
+  # returns
+  ret = data.frame(Time=data$Time, Return = ROC(data$Close,n=1,type ='discrete'))
+  
+  # strategy returns
+  strat_ret = data.frame(Time=pos$Time, Return= pos$Position * ret$Return)
+  
+  # Replace NAs with zero
+  strat_ret <- strat_ret %>% 
+    mutate(Return = ifelse(is.na(Return),0,Return))
+  
+  # Calculate cumulative return
+  strat_ret <- strat_ret %>% 
+    mutate(Cum_Ret = cumprod(1 + Return))
+  
+  # Total Cumulative Return
+  total_ret <- strat_ret$Cum_Ret[nrow(strat_ret)]
+  
+  # Add to results
+  results$total_ret[i] = total_ret
+  
+  # Next!
+}
+
+# Top 3 combinations
+res <- results %>% 
+  top_n(3,total_ret)
+
+head(res)
+```
+
+```{r}
+# Plot results of different parameter values
+p <- ggplot(results, aes(x=slowSMA, y=fastSMA, fill=total_ret)) + 
+      geom_tile() +
+      ggtitle("Total Return")
+
+ggplotly(p)
+```
+
+## Analyse performance of optimal parameters
+
+```{r}
+# Create function for SMA crossover backtest
+
+sma_vec_backtest <- function(x,n1,n2){
+  
+  
+  # x should be a timeseries object
+  
+  fastSMA = SMA(x,n1)
+  slowSMA = SMA(x,n2)
+  
+  pos = ifelse(fastSMA > slowSMA, 1,-1)
+  pos = stats::lag(pos,k=1)
+  
+  ret = ROC(x,n=1,type ='discrete')
+  
+  strat_ret = pos * ret
+  
+  return(strat_ret)
+}
+```
+
+
+```{r}
+# Run backtest function:
+ts = as.xts(data$Close, order.by = data$Time)
+
+strat_ret = sma_vec_backtest(ts,res$fastSMA[1],res$slowSMA[1])
+```
+
+
+
+```{r}
+# Performance
+charts.PerformanceSummary(strat_ret)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
