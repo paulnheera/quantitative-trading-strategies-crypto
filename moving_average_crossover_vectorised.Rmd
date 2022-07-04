@@ -65,6 +65,9 @@ position = data.frame(Time = data$Time, Position= ifelse(data$fastSMA > data$slo
 # We need to lag the position vector in a vectorised back test to avoid look ahead bias!
 position$Position = lag(position$Position)
 
+# convert NAs to zero
+#position$Position[is.na(position$Position)] <- 0
+
 # returns (1 time period returns)
 ret = data.frame(Time=data$Time, Return = ROC(data$Close,n=1,type ='discrete'))
 
@@ -108,8 +111,75 @@ ggplot(strat_ret, aes(x=Time,y=Cum_Ret)) +
 # Performance stats:
 
 ## Total Cumulative Return:
-total_ret <- strat_ret$Cum_Ret[nrow(strat_ret)]
+Return.cumulative(strat_ret$Return)
+```
+```{r}
+# Function to identify trades:
 
-total_ret
+# old function
+get_trades <- function(position){
+  
+  temp <- (position != stats::lag(position))
+  temp <- index(position)[which(temp==TRUE)]
+  
+  start <- temp[seq(from = 1,length(temp),by=2)]
+  end <- temp[seq(from = 2,length(temp),by=2)]
+  
+  if(length(start) > length(end)) end = c(end,NA)
+  
+  trades <- data.frame(start=start,end=end,position = position[start])
+  
+  return(trades)
+}
+
+
+# new trades function
+get_trades <- function(pos){
+  
+  r = rle(as.vector(pos))
+  s = cumsum(r$lengths)
+  
+  start <- c(1,(s + 1))
+  start <- start[-length(start)]
+  end <- s
+  
+  trades <- data.frame(start_indx=start, end_indx=end,start=index(pos)[start], end=index(pos)[end], position = r$values)
+  
+  return(trades)
+  
+}
+
+# replace NAs with zeros 
+position$Position[is.na(position$Position)] <- 0
+trades <- get_trades(position$Position)
+
+# Add stats to returns data frame.
+for( i in 1:nrow(trades)){
+  
+  temp = ret$Return[c(trades$start_indx[i]:trades$end_indx[i])]
+  temp[is.na(temp)] <- 0
+                      
+  trades$R[i] <- Return.cumulative(temp)
+  
+}
+
+# Calculate profit
+trades <- trades %>% 
+  mutate(profit = position*R)
+
+# Check total return
+Return.cumulative(trades$profit,geometric = F)
+
+```
+
+```{r}
+# Add costs:
+
+trades <- trades %>% 
+  mutate(costs = 0.002) %>% 
+  mutate(net_profit = profit - costs)
+
+# Total Net Return
+Return.cumulative(trades$net_profit,geometric = F)
 ```
 
