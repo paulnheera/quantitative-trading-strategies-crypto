@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r include=FALSE}
 #Libraries:
 library(readr)
 library(ggplot2)
@@ -21,11 +21,13 @@ library(PerformanceAnalytics)
 
 ```{r}
 # Import data:
-data <- read_csv("Kucoin_BTCUSDT_1H_data.csv")
+data <- read_csv("Kucoin_BTCUSDT_1H.csv")
 
 #market_data
 #indicators
 #market_stats - e.g. return, std dev, etc
+data$Time = as.POSIXct(data$Time, format="%d/%m/%Y %H:%M")
+head(data)
 ```
 
 ```{r}
@@ -41,8 +43,8 @@ p
 
 ```{r}
 # Calculate indicators:
-data$fastSMA = SMA(data$Close,100)
-data$slowSMA = SMA(data$Close,200)
+data$fastSMA = SMA(data$Close,10)
+data$slowSMA = SMA(data$Close,30)
 ```
 
 
@@ -81,7 +83,7 @@ strat_ret = data.frame(Time=position$Time, Return= position$Position * ret$Retur
 ggplot(strat_ret, aes(x=Return))+
   geom_histogram(bins=100, fill='blue')
 
-# add Mean, Mode, Median, Quartiles
+# add Mean, Mode, Median, Quartiles, Skewness, and Kurtosis
 ```
 
 
@@ -116,23 +118,6 @@ Return.cumulative(strat_ret$Return)
 ```{r}
 # Function to identify trades:
 
-# old function
-get_trades <- function(position){
-  
-  temp <- (position != stats::lag(position))
-  temp <- index(position)[which(temp==TRUE)]
-  
-  start <- temp[seq(from = 1,length(temp),by=2)]
-  end <- temp[seq(from = 2,length(temp),by=2)]
-  
-  if(length(start) > length(end)) end = c(end,NA)
-  
-  trades <- data.frame(start=start,end=end,position = position[start])
-  
-  return(trades)
-}
-
-
 # new trades function
 get_trades <- function(pos){
   
@@ -151,35 +136,50 @@ get_trades <- function(pos){
 
 # replace NAs with zeros 
 position$Position[is.na(position$Position)] <- 0
+# get trades
 trades <- get_trades(position$Position)
+```
 
+
+```{r}
 # Add stats to returns data frame.
 for( i in 1:nrow(trades)){
   
-  temp = ret$Return[c(trades$start_indx[i]:trades$end_indx[i])]
+  temp = strat_ret$Return[c(trades$start_indx[i]:trades$end_indx[i])]
   temp[is.na(temp)] <- 0
                       
-  trades$R[i] <- Return.cumulative(temp)
+  trades$profit[i] <- Return.cumulative(temp)
   
 }
 
-# Calculate profit
-trades <- trades %>% 
-  mutate(profit = position*R)
-
 # Check total return
-Return.cumulative(trades$profit,geometric = F)
+Return.cumulative(trades$profit) == (cumprod(trades$profit + 1) - 1)[nrow(trades)]
 
+# Why does my cumulative trade profits not equal the accumulated strategy returns
 ```
+
+
 
 ```{r}
 # Add costs:
-
 trades <- trades %>% 
   mutate(costs = 0.002) %>% 
   mutate(net_profit = profit - costs)
 
 # Total Net Return
-Return.cumulative(trades$net_profit,geometric = F)
+Return.cumulative(trades$profit)
+
+````
+
+
+```{r}
+# Checks
+
+print(paste("Cumulative profit from trades: ", Return.cumulative(trades$profit)))
+
+print(paste("Cumulative returns from strat_ret: ", Return.cumulative(strat_ret$Return)))
+  
+round(Return.cumulative(trades$profit),4) == round(Return.cumulative(strat_ret$Return),4)
+
 ```
 
