@@ -20,8 +20,41 @@ library(PerformanceAnalytics)
 ```
 
 ```{r}
-# import market data
-data <- read_csv("Kucoin_BTCUSDT_1H_data.csv")
+# User Defined functions:
+get_trades <- function(pos){
+  
+  # replace nas with zero
+  pos[is.na(pos)] <- 0
+  
+  r = rle(as.vector(pos))
+  s = cumsum(r$lengths)    # trade points
+  
+  # t_n = rep(seq_along(r$lengths), r$lengths) # trade number
+  # pos$trade_no <- t_n # add trade number to the position vector
+  
+  start <- c(1,(s + 1))
+  start <- start[-length(start)]
+  end <- s
+  
+  trades <- data.frame(start_indx=start, end_indx=end,start=index(pos)[start], end=index(pos)[end], position = r$values)
+  
+  return(trades)
+  
+}
+
+
+```
+
+
+```{r}
+# Import data:
+data <- read_csv("Kucoin_BTCUSDT_1H.csv")
+
+#market_data
+#indicators
+#market_stats - e.g. return, std dev, etc
+data$Time = as.POSIXct(data$Time, format="%d/%m/%Y %H:%M")
+head(data)
 ```
 
 
@@ -65,10 +98,28 @@ for(i in 1:nrow(param_data)) {
     mutate(Cum_Ret = cumprod(1 + Return))
   
   # Total Cumulative Return
-  total_ret <- strat_ret$Cum_Ret[nrow(strat_ret)]
+  total_ret <- Return.cumulative(strat_ret$Return)
+  
+  # Trades
+  trades <- get_trades(pos$Position)
+  # Add stats to returns data frame.
+  for( k in 1:nrow(trades)){
+    temp = strat_ret$Return[c(trades$start_indx[k]:trades$end_indx[k])]
+    temp[is.na(temp)] <- 0
+                        
+    trades$profit[k] <- Return.cumulative(temp)
+  }
+  # Add costs:
+  trades <- trades %>% 
+    mutate(costs = 0.002) %>% 
+    mutate(net_profit = profit - costs)
+  # Total Net Profit
+  tot_net_profit <- Return.cumulative(trades$net_profit)
+  
   
   # Add to results
-  results$total_ret[i] = total_ret
+  # results$total_ret[i] = total_ret # gross profit
+  results$total_ret[i] = tot_net_profit
   
   # Next!
 }
@@ -125,7 +176,7 @@ strat_ret = sma_vec_backtest(ts,res$fastSMA[1],res$slowSMA[1])
 
 ```{r}
 # Performance
-charts.PerformanceSummary(strat_ret)
+charts.PerformanceSummary(strat_ret) # performance excl. costs
 ```
 
 
