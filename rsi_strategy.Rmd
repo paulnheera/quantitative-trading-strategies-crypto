@@ -1,0 +1,116 @@
+---
+title: "RSI Strategy"
+author: "Paul Nheera"
+date: '2022-07-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+#Libraries:
+library(readr)
+library(ggplot2)
+library(plotly)
+library(quantmod)
+library(dplyr)
+library(PerformanceAnalytics)
+```
+
+
+```{r}
+# Import data:
+data <- read_csv("Kucoin_BTCUSDT_1h.csv")
+
+#market_data
+#indicators
+#market_stats - e.g. return, std dev, etc
+data$Time = as.POSIXct(data$Time, format="%d/%m/%Y %H:%M")
+head(data)
+```
+```{r}
+# Plot the closing price:
+p <- ggplot(data, aes(x=Time,y=Close))+
+  geom_line(col='blue') +
+  ggtitle('Closing price')
+
+p
+```
+
+#### Relative Strength Index Strategy
+
+```{r}
+k <- 14
+
+# Relative strength index
+data$RSI <- RSI(data$Close,n=k)
+
+```
+
+```{r Positions}
+# Positions
+
+# Short positions
+data <- data %>% 
+  mutate(position = ifelse(RSI > 70 , -1, NA))
+
+# Long positions
+data <- data %>% 
+  mutate(position = ifelse(RSI < 30 , 1, position))
+
+# Fill in the rest of the positions
+data <- data %>% 
+  mutate(position = na.locf(position,na.rm = FALSE))
+
+# replace remaining NAs with zeros
+data <- data %>% 
+  mutate(position = ifelse(is.na(position),0,position))
+```
+
+
+```{r}
+# Plot the positions
+ggplot(data, aes(x=Time, y=position)) +
+  geom_line(col='blue')
+```
+
+
+```{r Strategy returns}
+
+# Calculate asset returns
+data <- data %>% 
+  mutate(returns = ROC(Close,type='discrete'))
+
+# Determine strategy returns
+
+## First lag the positions vector (avoid look-ahead bias)
+data <- data %>% 
+  mutate(position = lag(position)) %>% 
+  mutate(position = ifelse(is.na(position),0,position))
+
+## Calculate strategy returns
+data <- data %>% 
+  mutate(strat_ret = position * returns)
+
+```
+
+
+
+```{r}
+# Performance Chart
+strat_ret = as.xts(data$strat_ret,order.by = data$Time)
+long_ret = as.xts(data$returns,order.by = data$Time)
+
+t = cbind(strat_ret,long_ret)
+
+charts.PerformanceSummary(t)
+```
+
+
+```{r}
+# Evaluate Performance
+
+Return.cumulative(strat_ret)
+```
