@@ -35,8 +35,8 @@ def get_bybit_data(symbol, interval, start_time, end_time):
     
     # Check that time variables are string
     
-    start_time = datetime.strptime(start_time, '%Y-%m-%d')
-    end_time = datetime.strptime(end_time, '%Y-%m-%d')
+    start_time = datetime.strptime(start_time, '%Y-%m-%d %H:%M')
+    end_time = datetime.strptime(end_time, '%Y-%m-%d %H:%M')
     
     start_ts = int(start_time.replace(tzinfo=timezone.utc).timestamp())
     end_ts = int(end_time.replace(tzinfo=timezone.utc).timestamp())
@@ -52,9 +52,9 @@ def get_bybit_data(symbol, interval, start_time, end_time):
         diff = int( (end_ts - c_ts) / (interval*60) )    # divide by 60 to get to mins, divide by interval to get to frequency
         
         print("Downloading data from {}".format(pd.to_datetime(c_ts, unit='s')))
-        print("The difference between current time and end time is {}".format(diff))
+        print("{} bars remaining...".format(diff))
         
-        print("\n")
+        print("-"*55)
         
         # download data
         temp = client.query_kline(
@@ -72,7 +72,7 @@ def get_bybit_data(symbol, interval, start_time, end_time):
         c_ts = raw_ls[-1]['start_at'] + interval*60  # interval (m) 
         
         # sleep for a bit
-        time.sleep(2)
+        time.sleep(1)
         
         
     
@@ -112,7 +112,8 @@ def get_bybit_data(symbol, interval, start_time, end_time):
 
 if __name__ == '__main__':
     
-    data = get_bybit_data(symbol='BTCUSDT', interval=30,start_time='2021-01-01',end_time='2021-01-31')
+    data = get_bybit_data(symbol='BTCUSDT', interval=30,
+                          start_time='2021-01-01 00:00',end_time='2021-01-31 00:00')
         
     data['Close'].plot(figsize=(10,6))
     
