@@ -169,7 +169,7 @@ def handle_message(msg):
     df = msg_to_df(msg)
     
     # Update historical data
-    hist_data = hist_data.append(df)
+    hist_data = pd.concat([hist_data, df])
     hist_data = hist_data[~hist_data.index.duplicated(keep='last')]
     # hist_data = hist_data.resample(timedelta(minutes=interval),
     #                               label='right').last().ffill()
@@ -277,7 +277,7 @@ def handle_message(msg):
         
         # Store predictions
         p = pd.DataFrame({'Prediction':pred}, index = data_point_.index)
-        predictions = predictions.append(p)
+        predictions =pd.concat([predictions, p])
     
     print('=' * 60)
     print("\n")
@@ -320,11 +320,13 @@ ws_linear.kline_stream(
 )
 
 # Wait
-
+time.sleep(3*60*60*24*7) # Run for 7 days
 
 # Stop Streaming
 if False:
     ws_linear.active_connections[0].exit()
     ws_linear.active_connections.clear()
+    
+    print('Data streaming and trading stopped!')
     
 #%%
