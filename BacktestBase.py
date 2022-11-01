@@ -8,6 +8,7 @@ Created on Thu Oct 20 22:03:23 2022
 #%% Libraries
 import numpy as np
 import pandas as pd
+from math import floor
 from pylab import mpl, plt
 plt.style.use('seaborn')
 mpl.rcParams['font.family'] = 'serif'
@@ -37,11 +38,15 @@ class BacktestBase(object):
         self.amount = amount
         self.ftc = ftc
         self.ptc = ptc
+        self.sl_price = None
+        self.tp_price = None
         self.units = 0
         self.position = 0
         self.trades = 0
         self.verbose = verbose
         self.get_data()
+        self.order_no = 0
+        self.order_history = []
         
     def get_data(self):
         '''Retrieves and prepares the data
@@ -87,50 +92,116 @@ class BacktestBase(object):
         net_wealth = self.units * price + self.amount ## NET_WEALTH AKA EQUITY
         print(f'{date} | current net wealth {net_wealth:.2f}')
         
-    def place_buy_order(self, bar, units=None, amount=None):
+    def place_buy_order(self, bar, units=None, amount=None, price=None, order_type='Market', sl=None, tp=None):
         '''Place a buy order
         '''
-        
-        date, price = self.get_time_price(bar)
+        date = self.get_time_price(bar)[0]
+        if price is None:
+            price = self.get_time_price(bar)[1]
+            
+            if sl is not None:
+                self.sl_price = round(price * (1 - sl), 2)
+            if tp is not None:
+                self.tp_price = round(price * (1 + tp), 2)
         if units is None:
             #units = int(amount/ price) # Doesn't have to be int of crypto since unit sizes are divisible.
-            units = amount/price ## IMPROVE: restrict for the symbols price precision.
-        
+            units = ((amount - self.ftc)/(1 + self.ptc))/price ## IMPROVE: restrict for the symbols price precision.
+            units = floor(units*100)/100
+            #ASSUMPTION: the fixed costs are deducted first.
         self.amount -= (units * price) * (1 + self.ptc) + self.ftc
         self.units += units
         self.trades += 1
+        self.order_no += 1
+        
+        if order_type in ['Stop Loss', 'Take Profit']:
+            self.sl_price = None
+            self.tp_price = None
+        
+        self.order_history.append({'Symbol':self.symbol, 'Qty':units, 
+                                   'Price':price, 'Direction':'Long',
+                                   'Order Type':order_type, 'Order No.':self.order_no,
+                                   'Order Time':date})
         
         if self.verbose:
             print(f'{date} | buying {units} units a {price:.2f}')
+            print(f'{date} | set stop loss at {self.sl_price} | set take profit at {self.tp_price}')
             self.print_balance(bar)
             self.print_net_wealth(bar)
             
-    def place_sell_order(self, bar, units=None, amount=None):
+    def place_sell_order(self, bar, units=None, amount=None, price=None, order_type='Market', sl=None, tp=None):
         '''Place a sell order
         '''
         
-        date, price = self.get_time_price(bar)
+        date = self.get_time_price(bar)[0]
+        
+        if price is None:
+            price = self.get_time_price(bar)[1]
+            
+            if sl is not None:
+                self.sl_price = round(price * (1 + sl), 2)
+            if tp is not None:
+                self.tp_price = round(price * (1 - tp), 2)
+
         if units is None:
             #units = int(amount/ price) # Doesn't have to be int of crypto since unit sizes are divisible.
-            units = amount/price ## IMPROVE: restrict for the symbols price precision.
-        
+            units = ((amount - self.ftc)/(1 + self.ptc))/price ## IMPROVE: restrict for the symbols price precision.
+            units = floor(units*100)/100
+            #ASSUMPTION: the fixed costs are deducted first.
         self.amount += (units * price) * (1 - self.ptc) - self.ftc
         self.units -= units
         self.trades += 1
+        self.order_no += 1
+        
+        if order_type in ['Stop Loss', 'Take Profit']:
+            self.sl_price = None
+            self.tp_price = None
+        
+        self.order_history.append({'Symbol':self.symbol, 'Qty':units, 
+                                   'Price':price, 'Direction':'Short',
+                                   'Order Type':order_type, 'Order No.':self.order_no,
+                                   'Order Time':date})
         
         if self.verbose:
             print(f'{date} | selling {units} units at {price:.2f}')
+            print(f'{date} | set stop loss at {self.sl_price} | set take profit at {self.tp_price}')
             self.print_balance(bar)
             self.print_net_wealth(bar)
             
+    def check_stop_loss(self, bar):
+        if self.sl_price is not None:
+            if (self.sl_price > self.data['Low'].iloc[bar]) and self.position==1:
+                print("Stop loss hit!")
+                self.place_sell_order(bar, units=self.units, price=self.sl_price, order_type='Stop Loss')
+                self.position = 0
+            elif (self.sl_price < self.data['High'].iloc[bar]) and self.position==-1:
+                print("Stop loss hit!")
+                self.place_buy_order(bar, units=-self.units, price=self.sl_price, order_type='Stop Loss')
+                self.position = 0
+        
+    def check_take_profit(self, bar):
+        if self.tp_price is not None:
+            if (self.tp_price < self.data['High'].iloc[bar]) and self.position==1:
+                print("Take profit hit")
+                self.place_sell_order(bar, units=self.units, price=self.tp_price, order_type='Take Profit')
+                self.position = 0
+            elif (self.tp_price > self.data['Low'].iloc[bar]) and self.position== -1:
+                print("Take profit hit")
+                self.place_buy_order(bar, units=-self.units, price=self.tp_price, order_type='Take Profit')
+                self.position = 0
+                
     def close_out(self, bar):
         ''' Closing out a long or short position
         '''
         
         date, price = self.get_time_price(bar)
-        self.amount += self.units * price
-        self.units = 0
-        self.trades +=1
+        # self.amount += self.units * price
+        # self.units = 0
+        # self.trades +=1
+        
+        if self.position == 1:
+            self.place_sell_order(bar, units=self.units)
+        elif self.position == -1:
+            self.place_buy_order(bar, units=-self.units)
         
         if self.verbose:
             print(f'{date} | inventory {self.units} units at {price:.2f}')
@@ -143,6 +214,33 @@ class BacktestBase(object):
         print('Net Performance [%] {:.2f}'.format(perf))
         print('Trades Executed [#] {:.2f}'.format(self.trades))
         print('=' * 55)
+        
+    def get_trades(self):
+        
+        trade_history = pd.DataFrame(self.order_history)
+        
+        trade_history['Entry Price'] = trade_history['Price']
+        trade_history['Exit Price'] = trade_history['Price'].shift(-1)
+        trade_history['P&L'] = trade_history['Qty'] * np.where(trade_history['Direction']=='Long', 
+                                        trade_history['Exit Price'] - trade_history['Entry Price'],
+                                        trade_history['Entry Price'] - trade_history['Exit Price'])
+        
+        trade_history['P&L (%)'] = np.where(trade_history['Direction']=='Long', 
+                                        trade_history['Exit Price']/trade_history['Entry Price']-1,
+                                        trade_history['Entry Price']/trade_history['Exit Price']-1) * 100
+        
+        trade_history['Trade Time'] = trade_history['Order Time']
+        trade_history['Exit Type'] = trade_history['Order Type'].shift(-1)
+        
+        cols = ['Symbol', 'Direction', 'Qty', 'Entry Price', 'Exit Price', 'P&L', 'P&L (%)', 'Exit Type',
+                'Trade Time']
+        
+        trade_history = trade_history[cols]
+        trade_history = trade_history.iloc[::2,:]
+        
+        return trade_history
+        
+        
         
 #%% Test
         
