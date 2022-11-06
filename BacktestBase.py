@@ -52,7 +52,7 @@ class BacktestBase(object):
         '''Retrieves and prepares the data
         '''
 
-        h5 = pd.HDFStore('data/bybit/' + self.symbol + '_' + str(self.interval) + '.h5', 'r')
+        h5 = pd.HDFStore('data/' + self.exchange + '/' + self.symbol + '_' + str(self.interval) + '.h5', 'r')
         raw = h5['data']
         h5.close()
         

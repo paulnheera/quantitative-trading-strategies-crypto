@@ -83,11 +83,11 @@ class BacktestLongShort(BacktestBase):
         
 #%% Test
         
-lsbt = BacktestLongShort(exchange='bybit',
+lsbt = BacktestLongShort(exchange='binance',
                          symbol='ETHUSDT',
                          interval=15,
                          start='2022-10-01 00:00',
-                         end='2022-10-31 12:00',
+                         end='2022-11-06 08:00',
                          amount=100,
                          ptc=0.0012)
 
