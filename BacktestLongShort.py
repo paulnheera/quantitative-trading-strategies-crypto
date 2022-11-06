@@ -59,14 +59,15 @@ class BacktestLongShort(BacktestBase):
         
         for bar in range(start_bar, end_bar + 1):
             
-            # self.check_stop_loss(bar=bar)
-            # self.check_take_profit(bar=bar)
+            if self.enable_stop_orders == True:
+                self.check_stop_loss(bar=bar)
+                self.check_take_profit(bar=bar)
             
             if self.position in [0, -1]:
                 if (self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar] 
                     and self.data['SMA1'].iloc[bar-1] <= self.data['SMA2'].iloc[bar-1]
                     ) :
-                    self.go_long(bar, amount='all', sl=0.03, tp=0.03)
+                    self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
                     self.position = 1 # long position
                     print('-' * 55) 
 
@@ -74,7 +75,7 @@ class BacktestLongShort(BacktestBase):
                 if (self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]
                     and self.data['SMA1'].iloc[bar-1] > self.data['SMA2'].iloc[bar-1]
                     ):
-                    self.go_short(bar,amount='all', sl=0.03, tp=0.03)
+                    self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
                     self.position = -1 # short position
                     print('-' * 55)       
             
@@ -89,7 +90,10 @@ lsbt = BacktestLongShort(exchange='binance',
                          start='2022-10-01 00:00',
                          end='2022-11-06 08:00',
                          amount=100,
-                         ptc=0.0012)
+                         ptc=0.0012,
+                         enable_stop_orders=False,
+                         sl=0.03,
+                         tp=0.03)
 
 lsbt.run_sma_strategy(50, 290)
 

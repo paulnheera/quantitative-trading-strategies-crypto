@@ -27,7 +27,7 @@ class BacktestBase(object):
     '''
     
     def __init__(self, exchange, symbol, interval, start, end, amount, 
-                 ftc=0.0, ptc=0.0, verbose=True):
+                 ftc=0.0, ptc=0.0, sl=None, tp=None, enable_stop_orders=False, verbose=True):
         
         self.exchange = exchange
         self.symbol = symbol
@@ -38,6 +38,9 @@ class BacktestBase(object):
         self.amount = amount
         self.ftc = ftc
         self.ptc = ptc
+        self.sl = sl
+        self.tp = sl
+        self.enable_stop_orders = enable_stop_orders
         self.sl_price = None
         self.tp_price = None
         self.units = 0
