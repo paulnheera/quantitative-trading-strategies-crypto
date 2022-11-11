@@ -50,6 +50,8 @@ class BacktestBase(object):
         self.get_data()
         self.order_no = 0
         self.order_history = []
+        self.equity = []
+        self.balance =[]
         
     def get_data(self):
         '''Retrieves and prepares the data
@@ -86,7 +88,7 @@ class BacktestBase(object):
         
         date, price = self.get_time_price(bar)
         print(f'{date} | current balance {self.amount:.2f}')
-        
+                
     def print_net_wealth(self,bar):
         '''Print out current cash balance info.
         '''
@@ -94,6 +96,23 @@ class BacktestBase(object):
         date, price = self.get_time_price(bar)
         net_wealth = self.units * price + self.amount ## NET_WEALTH AKA EQUITY
         print(f'{date} | current net wealth {net_wealth:.2f}')
+        
+    def update_equity(self, bar):
+        
+        date, price = self.get_time_price(bar)
+        net_wealth = self.units * price + self.amount ## NET_WEALTH AKA EQUITY
+        self.equity.append({'Time':date, 'Equity':net_wealth})
+        
+    def plot_equity(self):
+        
+        df = pd.DataFrame(self.equity)
+        df['Time'] = pd.to_datetime(df['Time'])
+        df = df.set_index('Time')
+        
+        title = self.symbol
+        
+        df['Equity'].plot(title=title,
+                          figsize=(10,6))
         
     def place_buy_order(self, bar, units=None, amount=None, price=None, order_type='Market', sl=None, tp=None):
         '''Place a buy order

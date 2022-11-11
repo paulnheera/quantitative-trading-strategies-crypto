@@ -59,10 +59,11 @@ class BacktestLongShort(BacktestBase):
         
         for bar in range(start_bar, end_bar + 1):
             
+            # Enable stop loss and take profit orders
             if self.enable_stop_orders == True:
                 self.check_stop_loss(bar=bar)
                 self.check_take_profit(bar=bar)
-            
+            # Check for Long entry signal
             if self.position in [0, -1]:
                 if (self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar] 
                     and self.data['SMA1'].iloc[bar-1] <= self.data['SMA2'].iloc[bar-1]
@@ -70,25 +71,26 @@ class BacktestLongShort(BacktestBase):
                     self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
                     self.position = 1 # long position
                     print('-' * 55) 
-
+            # Check for Short entry signal
             if self.position in [0, 1]:
                 if (self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]
                     and self.data['SMA1'].iloc[bar-1] > self.data['SMA2'].iloc[bar-1]
                     ):
                     self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
                     self.position = -1 # short position
-                    print('-' * 55)       
+                    print('-' * 55)
             
-                    
+            self.update_equity(bar)
+
         self.close_out(bar)
         
 #%% Test
         
-lsbt = BacktestLongShort(exchange='binance',
+lsbt = BacktestLongShort(exchange='bybit',
                          symbol='ETHUSDT',
                          interval=15,
                          start='2022-10-01 00:00',
-                         end='2022-11-06 08:00',
+                         end='2022-11-11 12:00',
                          amount=100,
                          ptc=0.0012,
                          enable_stop_orders=False,
@@ -100,4 +102,6 @@ lsbt.run_sma_strategy(50, 290)
 order_history = pd.DataFrame(lsbt.order_history)
 
 trades = lsbt.get_trades()
+
+lsbt.plot_equity()
                          
