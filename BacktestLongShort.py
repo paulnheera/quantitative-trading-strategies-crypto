@@ -93,9 +93,9 @@ lsbt = BacktestLongShort(exchange='bybit',
                          end='2022-11-11 12:00',
                          amount=100,
                          ptc=0.0012,
-                         enable_stop_orders=False,
-                         sl=0.03,
-                         tp=0.03)
+                         enable_stop_orders=True,
+                         sl=0.02,
+                         tp=0.06)
 
 lsbt.run_sma_strategy(50, 290)
 

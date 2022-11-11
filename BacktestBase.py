@@ -39,7 +39,7 @@ class BacktestBase(object):
         self.ftc = ftc
         self.ptc = ptc
         self.sl = sl
-        self.tp = sl
+        self.tp = tp
         self.enable_stop_orders = enable_stop_orders
         self.sl_price = None
         self.tp_price = None
@@ -122,9 +122,9 @@ class BacktestBase(object):
             price = self.get_time_price(bar)[1]
             
             if sl is not None:
-                self.sl_price = round(price * (1 - sl), 2)
+                self.sl_price = round(price * (1 - sl), 4)
             if tp is not None:
-                self.tp_price = round(price * (1 + tp), 2)
+                self.tp_price = round(price * (1 + tp), 4)
         if units is None:
             #units = int(amount/ price) # Doesn't have to be int of crypto since unit sizes are divisible.
             units = ((amount - self.ftc)/(1 + self.ptc))/price ## IMPROVE: restrict for the symbols price precision.
@@ -160,9 +160,9 @@ class BacktestBase(object):
             price = self.get_time_price(bar)[1]
             
             if sl is not None:
-                self.sl_price = round(price * (1 + sl), 2)
+                self.sl_price = round(price * (1 + sl), 4)
             if tp is not None:
-                self.tp_price = round(price * (1 - tp), 2)
+                self.tp_price = round(price * (1 - tp), 4)
 
         if units is None:
             #units = int(amount/ price) # Doesn't have to be int of crypto since unit sizes are divisible.
