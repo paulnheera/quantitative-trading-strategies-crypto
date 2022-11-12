@@ -74,7 +74,7 @@ class BacktestLongShort(BacktestBase):
             # Check for Short entry signal
             if self.position in [0, 1]:
                 if (self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]
-                    and self.data['SMA1'].iloc[bar-1] > self.data['SMA2'].iloc[bar-1]
+                    and self.data['SMA1'].iloc[bar-1] >= self.data['SMA2'].iloc[bar-1]
                     ):
                     self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
                     self.position = -1 # short position
