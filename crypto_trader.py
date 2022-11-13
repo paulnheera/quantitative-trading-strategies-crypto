@@ -201,8 +201,11 @@ class TraderBase(object):
         # set stop prices
         if tp is not None:
             take_profit = ask_price * (1 + tp)
+        else:
+            take_profit = None
         if sl is not None:
             stop_loss = ask_price * (1 - sl)
+        else: stop_loss = None
         
         # caculate qty (using fees) (if units is none)
         if units is None:
@@ -229,7 +232,7 @@ class TraderBase(object):
         
         # print
         if self.verbose:
-            print(f'{time} | buying {units} units at {ask_price:.2f}')
+            print(f'{time:%Y-%m-%d %H:%M:%S} | buying {units} units at {ask_price:.2f}')
             #self.print_balance()   ## *** Still need to fix these functions ***
             #self.print_net_wealth()  ## *** Still need to fix these functions ***
         
@@ -248,8 +251,12 @@ class TraderBase(object):
         # set stop prices
         if tp is not None:
             take_profit = bid_price * (1 - tp)
+        else:
+            take_profit = None
         if sl is not None:
             stop_loss = bid_price * (1 + sl)
+        else:
+            stop_loss = None
 
         # caculate qty (using fees) (if units is none)
         if units is None:
@@ -276,7 +283,7 @@ class TraderBase(object):
         
         # print
         if self.verbose:
-            print(f'{time} | selling {units} units at {bid_price:.2f}')
+            print(f'{time:%Y-%m-%d %H:%M:S} | selling {units} units at {bid_price:.2f}')
             #self.print_balance()
             #self.print_net_wealth()
         
@@ -349,7 +356,7 @@ class TraderBase(object):
 #%% TraderLongShort Class  
 class TraderLongShort(TraderBase):
     
-    def go_long(self, units=None, amount=None):
+    def go_long(self, units=None, amount=None, sl=None, tp=None):
         
         # Get current position
         position = self.client.my_position(symbol = self.symbol)['result'][0]
@@ -360,15 +367,15 @@ class TraderLongShort(TraderBase):
         
         # Open long position
         if units:
-            self.place_buy_order(units=units)
+            self.place_buy_order(units=units, sl=sl, tp=tp)
         elif amount:
             if amount == 'all':
                 amount == self.get_available_balance()
-            self.place_buy_order(amount=amount)
+            self.place_buy_order(amount=amount, sl=sl, tp=tp)
         
     
         
-    def go_short(self, units=None, amount=None):
+    def go_short(self, units=None, amount=None, sl=None, tp=None):
         
         # Get current position
         position = self.client.my_position(symbol = self.symbol)['result'][0]
@@ -379,11 +386,11 @@ class TraderLongShort(TraderBase):
         
         # Open short position
         if units:
-            self.place_buy_order(units=units)
+            self.place_buy_order(units=units, sl=sl, tp=tp)
         elif amount:
             if amount == 'all':
                 amount == self.get_available_balance()
-            self.place_sell_order(amount=amount)
+            self.place_sell_order(amount=amount, sl=sl, tp=tp)
             
     def run_sma_strategy(self, SMA1, SMA2):
         
@@ -441,7 +448,7 @@ class TraderLongShort(TraderBase):
                         and data['SMA1'].iloc[-3] <= data['SMA2'].iloc[-3]
                         ):
                         print(f"SIGNAL: BUY")
-                        self.go_long(amount='all') # long position
+                        self.go_long(amount='all', sl=self.sl, tp=self.tp) # long position
                     else:
                         print(f"SIGNAL: None")
                     
@@ -452,7 +459,7 @@ class TraderLongShort(TraderBase):
                         and data['SMA1'].iloc[-3] >= data['SMA2'].iloc[-3]
                         ):
                         print(f"SIGNAL: SELL")
-                        self.go_short(amount='all') # short position
+                        self.go_short(amount='all', sl=self.sl, tp=self.tp) # short position
                     else:
                         print(f"SIGNAL: None")
                 
