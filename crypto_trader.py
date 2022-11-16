@@ -41,7 +41,7 @@ class TraderBase(object):
         self.interval = interval
         self.leverage = leverage
         self.sl = sl
-        self.sl = tp
+        self.tp = tp
         #self.initial_amount = amount
         #self.amount = amount
         self.units = 0
@@ -200,11 +200,11 @@ class TraderBase(object):
         
         # set stop prices
         if tp is not None:
-            take_profit = ask_price * (1 + tp)
+            take_profit = round(ask_price * (1 + tp), 3)
         else:
             take_profit = None
         if sl is not None:
-            stop_loss = ask_price * (1 - sl)
+            stop_loss = round(ask_price * (1 - sl), 3)
         else: stop_loss = None
         
         # caculate qty (using fees) (if units is none)
@@ -250,11 +250,11 @@ class TraderBase(object):
         
         # set stop prices
         if tp is not None:
-            take_profit = bid_price * (1 - tp)
+            take_profit = round(bid_price * (1 - tp), 3)
         else:
             take_profit = None
         if sl is not None:
-            stop_loss = bid_price * (1 + sl)
+            stop_loss = round(bid_price * (1 + sl), 3)
         else:
             stop_loss = None
 
