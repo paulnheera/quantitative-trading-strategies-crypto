@@ -50,8 +50,7 @@ class BacktestBase(object):
         self.get_data()
         self.order_no = 0
         self.order_history = []
-        self.equity = []
-        self.balance =[]
+        self.results = []
         
     def get_data(self):
         '''Retrieves and prepares the data
@@ -97,15 +96,31 @@ class BacktestBase(object):
         net_wealth = self.units * price + self.amount ## NET_WEALTH AKA EQUITY
         print(f'{date} | current net wealth {net_wealth:.2f}')
         
-    def update_equity(self, bar):
+    def update_results(self, bar):
         
         date, price = self.get_time_price(bar)
         net_wealth = self.units * price + self.amount ## NET_WEALTH AKA EQUITY
-        self.equity.append({'Time':date, 'Equity':net_wealth})
+        self.results.append({'Time':date, 'Equity':net_wealth, 'Available Balance':self.amount,
+                            'Position':self.position})
+        
+    def update_trailling_sl(self, bar):
+        
+        date, price = self.get_time_price(bar)
+        
+        if self.position == 1:
+            
+            if self.sl_price < price * (1 - self.sl):
+                self.sl_price = price * (1 - self.sl)
+                print(f'Stop loss updated to {self.sl_price:.3f}')
+            
+        elif self.position == -1:
+            if self.sl_price > price * (1 + self.sl):
+                self.sl_price = price * (1 + self.sl)
+                print(f'Stop loss updated to {self.sl_price:.3f}')
         
     def plot_equity(self):
         
-        df = pd.DataFrame(self.equity)
+        df = pd.DataFrame(self.results)
         df['Time'] = pd.to_datetime(df['Time'])
         df = df.set_index('Time')
         
@@ -113,7 +128,7 @@ class BacktestBase(object):
         
         df['Equity'].plot(title=title,
                           figsize=(10,6))
-        
+                
     def place_buy_order(self, bar, units=None, amount=None, price=None, order_type='Market', sl=None, tp=None):
         '''Place a buy order
         '''
