@@ -49,6 +49,8 @@ class BacktestLongShort(BacktestBase):
         self.position = 0 # initial netural position
         self.trades = 0 # no of trades yet
         self.amount = self.initial_amount # reset initial capital
+        self.results = [] # reset results dictionary
+        self.order_history = [] # reset order_history
         
         self.data['return'] = self.data['Close']/ self.data['Close'].shift(1) - 1
         self.data['SMA1'] = self.data['Close'].rolling(SMA1).mean()
@@ -113,6 +115,8 @@ class BacktestLongShort(BacktestBase):
         self.position = 0 # initial netural position
         self.trades = 0 # no of trades yet
         self.amount = self.initial_amount # reset initial capital
+        self.results =[] # reset results dictionary
+        self.order_history = [] # reset order_history
         
         # Calculate required indicators:
         self.data['return'] = self.data['Close']/ self.data['Close'].shift(1) - 1
@@ -162,10 +166,44 @@ class BacktestLongShort(BacktestBase):
                 if (self.data['Close'].iloc[bar] > self.data['yMax'].iloc[bar]
                     and self.data['Close'].iloc[bar-1] <= self.data['yMax'].iloc[bar-1]
                     ):
-                    self.place_sell_order(bar=bar,units=-self.units)
+                    self.place_buy_order(bar=bar,units=-self.units)
                     self.position = 0 # neutral position
                     print('-' * 55)
             
+            self.update_results(bar)
+            
+        self.close_out(bar)
+    
+    def run_buy_and_hold(self):
+        '''
+        
+
+        Returns
+        -------
+        None.
+
+        '''
+        
+        # Reset:
+        self.position = 0 # initial netural position
+        self.trades = 0 # no of trades yet
+        self.amount = self.initial_amount # reset initial capital
+        self.results =[] # reset results dictionary
+        self.order_history = [] # reset order_history
+        
+        # Trading period:
+        start_bar = self.data.index.get_loc(self.start)
+        end_bar = self.data.index.get_loc(self.end)
+        
+        # Run Strategy:
+        for bar in range(start_bar, end_bar + 1):
+            
+            # Check for Long entry signal
+            if self.position in [0, -1]:
+                self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
+                self.position = 1 # long position
+                print('-' * 55) 
+ 
             self.update_results(bar)
             
         self.close_out(bar)
@@ -173,10 +211,10 @@ class BacktestLongShort(BacktestBase):
 #%% Test
         
 lsbt = BacktestLongShort(exchange='bybit',
-                         symbol='ETHUSDT',
+                         symbol='SOLUSDT',
                          interval=15,
-                         start='2022-10-01 00:00',
-                         end='2022-11-23 12:00',
+                         start='2022-01-01 00:00',
+                         end='2022-10-25 12:00',
                          amount=100,
                          ptc=0.0012,
                          enable_stop_orders=False,
@@ -184,12 +222,19 @@ lsbt = BacktestLongShort(exchange='bybit',
                          tp=0.10)
 
 lsbt.run_sma_strategy(50, 290)
+a = lsbt.plot_equity()
 
-lsbt.run_channel_breakout_strategy(100, 50)
+lsbt.run_channel_breakout_strategy(60, 20)
+b = lsbt.plot_equity()
+
+lsbt.run_buy_and_hold()
+c = lsbt.plot_equity()
+
+plt.legend(['SMA Crossover','Channel Breakout', 'Buy and Hold'])
 
 order_history = pd.DataFrame(lsbt.order_history)
 
 trades = lsbt.get_trades()
 
-lsbt.plot_equity()
+
                          

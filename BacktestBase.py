@@ -126,8 +126,10 @@ class BacktestBase(object):
         
         title = self.symbol
         
-        df['Equity'].plot(title=title,
-                          figsize=(10,6))
+        plot = df['Equity'].plot(title=title,
+                                 figsize=(10,6))
+        
+        return plot
                 
     def place_buy_order(self, bar, units=None, amount=None, price=None, order_type='Market', sl=None, tp=None):
         '''Place a buy order
@@ -182,7 +184,7 @@ class BacktestBase(object):
         if units is None:
             #units = int(amount/ price) # Doesn't have to be int of crypto since unit sizes are divisible.
             units = ((amount - self.ftc)/(1 + self.ptc))/price ## IMPROVE: restrict for the symbols price precision.
-            units = floor(units*100)/100
+            units = floor(units*100)/100 # floor to 2 decimal places.
             #ASSUMPTION: the fixed costs are deducted first.
         self.amount += (units * price) * (1 - self.ptc) - self.ftc
         self.units -= units
