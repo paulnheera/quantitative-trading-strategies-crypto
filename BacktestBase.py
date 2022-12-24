@@ -27,7 +27,8 @@ class BacktestBase(object):
     '''
     
     def __init__(self, exchange, symbol, interval, start, end, amount, 
-                 ftc=0.0, ptc=0.0, sl=None, tp=None, enable_stop_orders=False, verbose=True):
+                 ftc=0.0, ptc=0.0, sl=None, tp=None, enable_stop_orders=False, enable_filter=False,
+                 verbose=True):
         
         self.exchange = exchange
         self.symbol = symbol
@@ -43,6 +44,7 @@ class BacktestBase(object):
         self.enable_stop_orders = enable_stop_orders
         self.sl_price = None
         self.tp_price = None
+        self.enable_filter = enable_filter
         self.units = 0
         self.position = 0
         self.trades = 0
@@ -290,4 +292,4 @@ if __name__ == '__main__':
                       interval=15,
                       start='2022-09-30 11:00',
                       end='2022-10-31 11:00',
-                      amount=100)
+                      amount=10000)

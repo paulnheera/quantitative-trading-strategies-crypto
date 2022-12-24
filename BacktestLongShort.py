@@ -7,6 +7,7 @@ Created on Thu Oct 20 22:22:32 2022
 
 #%% Libraries
 from BacktestBase import *
+import talib as ta
 
 #%% BacktestLongShort Class
 
@@ -56,6 +57,8 @@ class BacktestLongShort(BacktestBase):
         self.data['SMA1'] = self.data['Close'].rolling(SMA1).mean()
         self.data['SMA2'] = self.data['Close'].rolling(SMA2).mean()
         
+        self.data['ADX'] = ta.ADX(self.data['High'], self.data['Low'], self.data['Close']) # Filter indicator
+                
         start_bar = self.data.index.get_loc(self.start)
         end_bar = self.data.index.get_loc(self.end)
         
@@ -69,18 +72,31 @@ class BacktestLongShort(BacktestBase):
             if self.position in [0, -1]:
                 if (self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar] 
                     and self.data['SMA1'].iloc[bar-1] <= self.data['SMA2'].iloc[bar-1]
-                    ) :
-                    self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
-                    self.position = 1 # long position
-                    print('-' * 55) 
+                    ):
+                    if self.enable_filter:
+                        if(self.data['ADX'].iloc[bar-1] > 25):
+                            self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
+                            self.position = 1 # long position
+                            print('-' * 55)
+                    else:
+                        self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
+                        self.position = 1 # long position
+                        print('-' * 55)
+                        
             # Check for Short entry signal
             if self.position in [0, 1]:
                 if (self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]
                     and self.data['SMA1'].iloc[bar-1] >= self.data['SMA2'].iloc[bar-1]
                     ):
-                    self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
-                    self.position = -1 # short position
-                    print('-' * 55)
+                    if self.enable_filter:
+                        if(self.data['ADX'].iloc[bar-1] > 25):
+                            self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
+                            self.position = -1 # short position
+                            print('-' * 55)
+                    else:
+                        self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
+                        self.position = -1 # short position
+                        print('-' * 55)
             
             self.update_results(bar)
             
@@ -173,6 +189,73 @@ class BacktestLongShort(BacktestBase):
             self.update_results(bar)
             
         self.close_out(bar)
+        
+        
+    def run_vol_breakout_strategy(self, n=14 ,m=1):
+        '''
+        
+
+        Parameters
+        ----------
+        n : TYPE, optional
+            DESCRIPTION. The default is 14.
+        m : TYPE, optional
+            DESCRIPTION. The default is 1.
+
+        Returns
+        -------
+        None.
+
+        '''
+        
+        self.position = 0 # initial netural position
+        self.trades = 0 # no of trades yet
+        self.amount = self.initial_amount # reset initial capital
+        self.results = [] # reset results dictionary
+        self.order_history = [] # reset order_history
+        
+        data = self.data.copy()
+        
+        # Indicators
+        data['return'] = data['Close']/ data['Close'].shift(1) - 1
+        data['ATR'] = ATR(data,n=14)
+        data['Upper_trigger'] = data['Close'].shift() + m * data['ATR']
+        data['Lower_trigger'] = data['Close'].shift() - m * data['ATR']
+        
+        # Trading period:
+        start_bar = self.data.index.get_loc(self.start)
+        end_bar = self.data.index.get_loc(self.end)
+        
+        for bar in range(start_bar, end_bar + 1):
+            
+            # Enable stop loss and take profit orders
+            if self.enable_stop_orders == True:
+                self.check_stop_loss(bar=bar)
+                self.check_take_profit(bar=bar)
+            # Check for Long entry signal
+            if self.position in [0, -1]:
+                if (data['Close'].iloc[bar] > data['Upper_trigger'].iloc[bar] 
+                    and data['Close'].iloc[bar-1] <= data['Upper_trigger'].iloc[bar-1]
+                    ):
+                    self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
+                    self.position = 1 # long position
+                    print('-' * 55) 
+            # Check for Short entry signal
+            if self.position in [0, 1]:
+                if (data['Close'].iloc[bar] < data['Lower_trigger'].iloc[bar]
+                    and data['Close'].iloc[bar-1] >= data['Lower_trigger'].iloc[bar-1]
+                    ):
+                    self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
+                    self.position = -1 # short position
+                    print('-' * 55)
+            
+            self.update_results(bar)
+            
+            #self.update_trailling_sl(bar)
+
+        self.close_out(bar)
+        
+        
     
     def run_buy_and_hold(self):
         '''
@@ -211,21 +294,26 @@ class BacktestLongShort(BacktestBase):
 #%% Test
         
 lsbt = BacktestLongShort(exchange='bybit',
-                         symbol='SOLUSDT',
+                         symbol='ETHUSDT',
                          interval=15,
                          start='2022-01-01 00:00',
-                         end='2022-10-25 12:00',
-                         amount=100,
+                         end='2022-12-20 12:00',
+                         amount=10000,
                          ptc=0.0012,
                          enable_stop_orders=False,
-                         sl=0.025,
-                         tp=0.10)
+                         enable_filter=True,
+                         sl=0.04,
+                         tp=0.9)
 
-lsbt.run_sma_strategy(50, 290)
+lsbt.run_sma_strategy(20, 285)
 a = lsbt.plot_equity()
 
-lsbt.run_channel_breakout_strategy(60, 20)
+lsbt.run_channel_breakout_strategy(60, 30)
 b = lsbt.plot_equity()
+
+lsbt.run_vol_breakout_strategy(n=14,m=1.5)
+p = lsbt.plot_equity()
+
 
 lsbt.run_buy_and_hold()
 c = lsbt.plot_equity()
@@ -235,6 +323,56 @@ plt.legend(['SMA Crossover','Channel Breakout', 'Buy and Hold'])
 order_history = pd.DataFrame(lsbt.order_history)
 
 trades = lsbt.get_trades()
+
+# Trade
+wins = len(trades[trades['P&L (%)'] > 0])
+losses = len(trades[trades['P&L (%)'] <= 0])
+win_perc = (wins/(wins + losses)) * 100
+
+avg_trade = trades['P&L (%)'].mean()
+
+avg_win = trades[trades['P&L (%)'] > 0]['P&L (%)'].mean()
+avg_loss = trades[trades['P&L (%)'] < 0]['P&L (%)'].mean()
+
+best_trade = trades['P&L (%)'].max()
+worst_trade = trades['P&L (%)'].min()
+
+
+
+# Trade Winning %
+print(f'Trade Winning %    {win_perc:.2f}%')
+# Average Trade %
+print(f'Average Trade %    {avg_trade:.2f}%')
+# Average Win %
+print(f'Average Win %      {avg_win:.2f}%')
+# Average Loss %
+print(f'Average Loss %     {avg_loss:.2f}%')
+# Best Trade %
+print(f'Best Trade %       {best_trade:.2f}%')
+# Worst Trade %
+print(f'# Worst Trade %    {worst_trade:.2f}%')
+# Worst Trade Date
+# Avg Days in Trade
+# Trades
+
+import pyfolio as pf
+results = pd.DataFrame(lsbt.results)
+
+returns = results[['Time', 'Equity']]
+returns['Returns'] = returns['Equity'] / returns['Equity'].shift() - 1
+returns['Time'] = pd.to_datetime(returns['Time'])
+returns = returns.set_index('Time')
+returns = returns['Returns']
+
+# create daily returns
+daily_returns = returns.resample('D').agg(lambda x: (x+1).prod() - 1)
+daily_returns.plot.bar()
+
+# create monthly returns
+monthly_returns = returns.resample('M').agg(lambda x: (x+1).prod() - 1)
+monthly_returns.plot.bar()
+
+df = pf.create_full_tear_sheet(returns)
 
 
                          
