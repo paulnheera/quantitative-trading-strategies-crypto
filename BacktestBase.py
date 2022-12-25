@@ -120,7 +120,7 @@ class BacktestBase(object):
                 self.sl_price = price * (1 + self.sl)
                 print(f'Stop loss updated to {self.sl_price:.3f}')
         
-    def plot_equity(self):
+    def plot_equity(self, ax=None):
         
         df = pd.DataFrame(self.results)
         df['Time'] = pd.to_datetime(df['Time'])
@@ -129,7 +129,21 @@ class BacktestBase(object):
         title = self.symbol
         
         plot = df['Equity'].plot(title=title,
-                                 figsize=(10,6))
+                                 figsize=(10,6), ax=ax)
+        
+        return plot
+    
+    def plot_drawdowns(self, ax=None):
+        
+        df = pd.DataFrame(self.results)
+        df['Time'] = pd.to_datetime(df['Time'])
+        df = df.set_index('Time')
+        
+        df['roll_max'] = df['Equity'].cummax()
+        df['draw_down'] = df['Equity'] / df['roll_max'] - 1
+        
+        plot = df['draw_down'].plot(color='red', linewidth=0.2, ax=ax)
+        ax.fill_between(df.index, df['draw_down'], color='red', alpha=0.3)
         
         return plot
                 
@@ -182,7 +196,6 @@ class BacktestBase(object):
                 self.sl_price = round(price * (1 + sl), 4)
             if tp is not None:
                 self.tp_price = round(price * (1 - tp), 4)
-
         if units is None:
             #units = int(amount/ price) # Doesn't have to be int of crypto since unit sizes are divisible.
             units = ((amount - self.ftc)/(1 + self.ptc))/price ## IMPROVE: restrict for the symbols price precision.
