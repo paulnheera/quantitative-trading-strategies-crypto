@@ -15,28 +15,22 @@ class BacktestLongShort(BacktestBase):
         
     def go_long(self, bar, units=None, amount=None, sl=None, tp=None):
         if self.position == -1:
-            print('****Closing existing short trade.****')
             self.place_buy_order(bar, units=-self.units) # Close existing short position!
         if units:
-            print('**** Placing a long trade with units specified.****')
             self.place_buy_order(bar, units=units, sl=sl, tp=tp)
         elif amount:
             if amount == 'all':
                 amount = self.amount
-            print('**** Placing a long trade with amount specified.****')
             self.place_buy_order(bar, amount=amount, sl=sl, tp=tp)
             
     def go_short(self, bar, units=None, amount=None, sl=None, tp=None):
         if self.position == 1:
-            print('****Closing existing long trade.****')
             self.place_sell_order(bar, units=self.units) # Close existing long position!
         if units:
-            print('**** Placing a short trade with units specified.****')
             self.place_sell_order(bar, units=units, sl=sl, tp=tp)
         elif amount:
             if amount == 'all':
                 amount = self.amount
-            print('**** Placing a short trade with amount specified.****')
             self.place_sell_order(bar, amount=amount, sl=sl, tp=tp)
             
     def run_sma_strategy(self, SMA1, SMA2):
@@ -74,10 +68,13 @@ class BacktestLongShort(BacktestBase):
                     and self.data['SMA1'].iloc[bar-1] <= self.data['SMA2'].iloc[bar-1]
                     ):
                     if self.enable_filter:
-                        if(self.data['ADX'].iloc[bar-1] > 25):
+                        if(self.data['ADX'].iloc[bar-1] > 25): # If filter is passed go long!
                             self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
                             self.position = 1 # long position
                             print('-' * 55)
+                        else:
+                            if self.position == -1:
+                                self.place_buy_order(bar, units=-self.units)    
                     else:
                         self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
                         self.position = 1 # long position
@@ -89,10 +86,13 @@ class BacktestLongShort(BacktestBase):
                     and self.data['SMA1'].iloc[bar-1] >= self.data['SMA2'].iloc[bar-1]
                     ):
                     if self.enable_filter:
-                        if(self.data['ADX'].iloc[bar-1] > 25):
+                        if(self.data['ADX'].iloc[bar-1] > 25): # If filter is passed go short!
                             self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
                             self.position = -1 # short position
                             print('-' * 55)
+                        # else:
+                        #     if self.position == 1:
+                        #         self.place_sell_order(bar, units=self.units)
                     else:
                         self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
                         self.position = -1 # short position
@@ -292,87 +292,22 @@ class BacktestLongShort(BacktestBase):
         self.close_out(bar)
         
 #%% Test
-        
-lsbt = BacktestLongShort(exchange='bybit',
-                         symbol='ETHUSDT',
-                         interval=15,
-                         start='2022-01-01 00:00',
-                         end='2022-12-20 12:00',
-                         amount=10000,
-                         ptc=0.0012,
-                         enable_stop_orders=False,
-                         enable_filter=True,
-                         sl=0.04,
-                         tp=0.9)
 
-lsbt.run_sma_strategy(20, 285)
-a = lsbt.plot_equity()
+if __name__ == '__main__':   
+    lsbt = BacktestLongShort(exchange='bybit',
+                             symbol='ETHUSDT',
+                             interval=15,
+                             start='2021-01-01 00:00',
+                             end='2022-12-20 12:00',
+                             amount=10000,
+                             ptc=0.0012,
+                             enable_stop_orders=False,
+                             enable_filter=True,
+                             sl=0.04,
+                             tp=0.9)
+    
+    lsbt.run_sma_strategy(20, 300)
+    fig, axs = plt.subplots(2, gridspec_kw={'height_ratios': [2, 1]}, sharex=True)
+    lsbt.plot_equity(ax=axs[0])
+    lsbt.plot_drawdowns(ax=axs[1])
 
-lsbt.run_channel_breakout_strategy(60, 30)
-b = lsbt.plot_equity()
-
-lsbt.run_vol_breakout_strategy(n=14,m=1.5)
-p = lsbt.plot_equity()
-
-
-lsbt.run_buy_and_hold()
-c = lsbt.plot_equity()
-
-plt.legend(['SMA Crossover','Channel Breakout', 'Buy and Hold'])
-
-order_history = pd.DataFrame(lsbt.order_history)
-
-trades = lsbt.get_trades()
-
-# Trade
-wins = len(trades[trades['P&L (%)'] > 0])
-losses = len(trades[trades['P&L (%)'] <= 0])
-win_perc = (wins/(wins + losses)) * 100
-
-avg_trade = trades['P&L (%)'].mean()
-
-avg_win = trades[trades['P&L (%)'] > 0]['P&L (%)'].mean()
-avg_loss = trades[trades['P&L (%)'] < 0]['P&L (%)'].mean()
-
-best_trade = trades['P&L (%)'].max()
-worst_trade = trades['P&L (%)'].min()
-
-
-
-# Trade Winning %
-print(f'Trade Winning %    {win_perc:.2f}%')
-# Average Trade %
-print(f'Average Trade %    {avg_trade:.2f}%')
-# Average Win %
-print(f'Average Win %      {avg_win:.2f}%')
-# Average Loss %
-print(f'Average Loss %     {avg_loss:.2f}%')
-# Best Trade %
-print(f'Best Trade %       {best_trade:.2f}%')
-# Worst Trade %
-print(f'# Worst Trade %    {worst_trade:.2f}%')
-# Worst Trade Date
-# Avg Days in Trade
-# Trades
-
-import pyfolio as pf
-results = pd.DataFrame(lsbt.results)
-
-returns = results[['Time', 'Equity']]
-returns['Returns'] = returns['Equity'] / returns['Equity'].shift() - 1
-returns['Time'] = pd.to_datetime(returns['Time'])
-returns = returns.set_index('Time')
-returns = returns['Returns']
-
-# create daily returns
-daily_returns = returns.resample('D').agg(lambda x: (x+1).prod() - 1)
-daily_returns.plot.bar()
-
-# create monthly returns
-monthly_returns = returns.resample('M').agg(lambda x: (x+1).prod() - 1)
-monthly_returns.plot.bar()
-
-df = pf.create_full_tear_sheet(returns)
-
-
-                         
