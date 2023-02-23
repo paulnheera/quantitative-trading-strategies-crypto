@@ -38,8 +38,9 @@ class BacktestLongShort(BacktestBase):
         msg += f'\nfrom: {self.start} to: {self.end}'
         msg += f'\nfixed costs {self.ftc} | '
         msg += f'proportional costs {self.ptc}'       
-        print(msg)
-        print('=' * 55)
+        if self.verbose:
+            print(msg)
+            print('=' * 55)
 
         self.position = 0 # initial netural position
         self.trades = 0 # no of trades yet
@@ -52,7 +53,7 @@ class BacktestLongShort(BacktestBase):
         self.data['SMA2'] = self.data['Close'].rolling(SMA2).mean()
         
         self.data['ADX'] = ta.ADX(self.data['High'], self.data['Low'], self.data['Close']) # Filter indicator
-                
+        
         start_bar = self.data.index.get_loc(self.start)
         end_bar = self.data.index.get_loc(self.end)
         
@@ -62,6 +63,7 @@ class BacktestLongShort(BacktestBase):
             if self.enable_stop_orders == True:
                 self.check_stop_loss(bar=bar)
                 self.check_take_profit(bar=bar)
+                
             # Check for Long entry signal
             if self.position in [0, -1]:
                 if (self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar] 
@@ -71,14 +73,16 @@ class BacktestLongShort(BacktestBase):
                         if(self.data['ADX'].iloc[bar-1] > 25): # If filter is passed go long!
                             self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
                             self.position = 1 # long position
-                            print('-' * 55)
+                            if self.verbose:
+                                print('-' * 55)
                         else:
                             if self.position == -1:
                                 self.place_buy_order(bar, units=-self.units)    
                     else:
                         self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
                         self.position = 1 # long position
-                        print('-' * 55)
+                        if self.verbose:
+                            print('-' * 55)
                         
             # Check for Short entry signal
             if self.position in [0, 1]:
@@ -89,21 +93,23 @@ class BacktestLongShort(BacktestBase):
                         if(self.data['ADX'].iloc[bar-1] > 25): # If filter is passed go short!
                             self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
                             self.position = -1 # short position
-                            print('-' * 55)
+                            if self.verbose:
+                                print('-' * 55)
                         # else:
                         #     if self.position == 1:
                         #         self.place_sell_order(bar, units=self.units)
                     else:
                         self.go_short(bar,amount='all', sl=self.sl, tp=self.tp)
                         self.position = -1 # short position
-                        print('-' * 55)
+                        if self.verbose:
+                            print('-' * 55)
             
             self.update_results(bar)
             
             #self.update_trailling_sl(bar)
 
         self.close_out(bar)
-    
+         
     def run_channel_breakout_strategy(self, x, y):
         '''
         Channel Breakout Rules
@@ -190,7 +196,6 @@ class BacktestLongShort(BacktestBase):
             
         self.close_out(bar)
         
-        
     def run_vol_breakout_strategy(self, n=14 ,m=1):
         '''
         
@@ -255,12 +260,9 @@ class BacktestLongShort(BacktestBase):
 
         self.close_out(bar)
         
-        
-    
     def run_buy_and_hold(self):
         '''
         
-
         Returns
         -------
         None.
@@ -285,7 +287,8 @@ class BacktestLongShort(BacktestBase):
             if self.position in [0, -1]:
                 self.go_long(bar, amount='all', sl=self.sl, tp=self.tp)
                 self.position = 1 # long position
-                print('-' * 55) 
+                if self.verbose:
+                    print('-' * 55) 
  
             self.update_results(bar)
             
@@ -297,17 +300,16 @@ if __name__ == '__main__':
     lsbt = BacktestLongShort(exchange='bybit',
                              symbol='ETHUSDT',
                              interval=15,
-                             start='2021-01-01 00:00',
-                             end='2022-12-20 12:00',
+                             start='2022-01-01 00:00',
+                             end='2022-03-31 12:00',
                              amount=10000,
                              ptc=0.0012,
-                             enable_stop_orders=False,
+                             enable_stop_orders=True,
                              enable_filter=True,
                              sl=0.04,
-                             tp=0.9)
+                             tp=None)
     
-    lsbt.run_sma_strategy(20, 300)
+    lsbt.run_sma_strategy(30, 375)
     fig, axs = plt.subplots(2, gridspec_kw={'height_ratios': [2, 1]}, sharex=True)
     lsbt.plot_equity(ax=axs[0])
     lsbt.plot_drawdowns(ax=axs[1])
-

@@ -113,13 +113,15 @@ class BacktestBase(object):
             
             if self.sl_price < price * (1 - self.sl):
                 self.sl_price = price * (1 - self.sl)
-                print(f'Stop loss updated to {self.sl_price:.3f}')
+                if self.verbose:
+                    print(f'Stop loss updated to {self.sl_price:.3f}')
             
         elif self.position == -1:
             if self.sl_price > price * (1 + self.sl):
                 self.sl_price = price * (1 + self.sl)
-                print(f'Stop loss updated to {self.sl_price:.3f}')
-        
+                if self.verbose:
+                    print(f'Stop loss updated to {self.sl_price:.3f}')
+                
     def plot_equity(self, ax=None):
         
         df = pd.DataFrame(self.results)
@@ -224,22 +226,26 @@ class BacktestBase(object):
     def check_stop_loss(self, bar):
         if self.sl_price is not None:
             if (self.sl_price > self.data['Low'].iloc[bar]) and self.position==1:
-                print("Stop loss hit!")
+                if self.verbose:
+                    print("Stop loss hit!")
                 self.place_sell_order(bar, units=self.units, price=self.sl_price, order_type='Stop Loss')
                 self.position = 0
             elif (self.sl_price < self.data['High'].iloc[bar]) and self.position==-1:
-                print("Stop loss hit!")
+                if self.verbose:
+                    print("Stop loss hit!")
                 self.place_buy_order(bar, units=-self.units, price=self.sl_price, order_type='Stop Loss')
                 self.position = 0
         
     def check_take_profit(self, bar):
         if self.tp_price is not None:
             if (self.tp_price < self.data['High'].iloc[bar]) and self.position==1:
-                print("Take profit hit")
+                if self.verbose:
+                    print("Take profit hit")
                 self.place_sell_order(bar, units=self.units, price=self.tp_price, order_type='Take Profit')
                 self.position = 0
             elif (self.tp_price > self.data['Low'].iloc[bar]) and self.position== -1:
-                print("Take profit hit")
+                if self.verbose:
+                    print("Take profit hit")
                 self.place_buy_order(bar, units=-self.units, price=self.tp_price, order_type='Take Profit')
                 self.position = 0
                 
@@ -260,14 +266,15 @@ class BacktestBase(object):
         if self.verbose:
             print(f'{date} | inventory {self.units} units at {price:.2f}')
             print('=' * 55)
-        
-        print('Final balance [$] {:2f}'.format(self.amount))
+            print('Final balance [$] {:2f}'.format(self.amount))
         
         perf = ((self.amount - self.initial_amount) / 
                 self.initial_amount * 100)
-        print('Net Performance [%] {:.2f}'.format(perf))
-        print('Trades Executed [#] {:.2f}'.format(self.trades))
-        print('=' * 55)
+        
+        if self.verbose:
+            print('Net Performance [%] {:.2f}'.format(perf))
+            print('Trades Executed [#] {:.2f}'.format(self.trades))
+            print('=' * 55)
         
     def get_trades(self):
         
