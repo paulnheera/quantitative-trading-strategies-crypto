@@ -21,6 +21,9 @@ from IPython import display
 
 from  bybit_download_data import get_bybit_data
 
+import sys
+import signal
+
 #%% TraderBase Class
 class TraderBase(object):
     ''' Base class for trading strategies
@@ -478,8 +481,21 @@ class TraderLongShort(TraderBase):
             
             print('Data streaming and trading stopped!')      
             
-#%%            
+#%% 
+            
+def exception_hook(exctype, value, traceback):
+    
+    # Print the exception type and value
+    print(f'Error occured: {exctype} - {value}')
+    
+#%%
+            
 if __name__ == '__main__':
+    
+    # Set the exception hook
+    sys.excepthook = exception_hook
+    
+    # Register exit signals to be handled by on_exit function
     
     tb = TraderLongShort(conf_file='pyalgo.cfg',
                     exchange='bybit',
