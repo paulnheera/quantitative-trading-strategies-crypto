@@ -197,27 +197,30 @@ class TraderBase(object):
         # Set stop prices
         if tp is not None:
             take_profit = round(ask_price * (1 + tp) / tick_size) * tick_size
+            take_profit = f'{take_profit:.{price_prec}f}' # convert take profit to a string
         else:
             take_profit = None
         if sl is not None:
             stop_loss = round(ask_price * (1 - sl) / tick_size) * tick_size
+            stop_loss = f'{stop_loss:.{price_prec}f}' # convert stop loss to a string
         else: stop_loss = None
         
         # Calculate qty (using fees) (if units is none)
         if units is None:
             units = (amount * self.leverage) / (ask_price * (0.0012 * self.leverage + 0.9994))
-            units = floor(units * qty_step) / qty_step
+            units = floor(units / qty_step) * qty_step
+            units = f'{units:.{qty_prec}f}'
         
         # Place order
-        order = self.client.place_active_order(
+        order = self.client.place_order(
                     category='linear',
                     symbol = self.symbol,
                     side = "Buy",
                     orderType = "Market",
-                    qty= f'{units:.{qty_prec}f}',                              # units = qty
+                    qty= units,                              # units = qty
                     #price=8083,
-                    take_profit = f'{take_profit:.{price_prec}f}' ,
-                    stop_loss = f'{stop_loss:.{price_prec}f}',
+                    take_profit = take_profit ,
+                    stop_loss = stop_loss,
                     timeInForce = "PostOnly",                                  # WHAT IS POST ONLY
                     orderLinkId = f"{self.symbol} - {datetime.now()}",
                     isLeverage = 0,
@@ -252,27 +255,30 @@ class TraderBase(object):
          # Set stop prices
         if tp is not None:
             take_profit = round(bid_price * (1 - tp) / tick_size) * tick_size
+            take_profit = f'{take_profit:.{price_prec}f}'
         else:
             take_profit = None
         if sl is not None:
             stop_loss = round(bid_price * (1 + sl) / tick_size) * tick_size
+            stop_loss = f'{stop_loss:.{price_prec}f}'
         else: stop_loss = None
 
         # caculate qty (using fees) (if units is none)
         if units is None:
             units = (amount * self.leverage)/ (bid_price * (0.0012 * self.leverage + 1.0006))
-            units = floor(units * qty_step) / qty_step
+            units = floor(units / qty_step) * qty_step
+            units = f'{units:.{qty_prec}f}'
         
         # place order
-        order = self.client.place_active_order(
+        order = self.client.place_order(
                     category='linear',
                     symbol = self.symbol,
                     side = "Sell",
                     orderType = "Market",
-                    qty= f'{units:.{qty_prec}f}',                              # units = qty
+                    qty= units,                              # units = qty
                     #price=8083,
-                    take_profit = f'{take_profit:.{price_prec}f}' ,
-                    stop_loss = f'{stop_loss:.{price_prec}f}',
+                    take_profit = take_profit,
+                    stop_loss = stop_loss,
                     timeInForce = "PostOnly",                                  # WHAT IS POST ONLY
                     orderLinkId = f"{self.symbol} - {datetime.now()}",
                     isLeverage = 0,
@@ -356,7 +362,7 @@ class TraderBase(object):
 if __name__ == '__main__':
     trader = TraderBase(conf_file='algo_trading.cfg',
                     exchange='bybit',
-                    symbol='ALICEUSDT',
+                    symbol='SOLUSDT',
                     interval=60)
     
     # tb.get_data(100)
