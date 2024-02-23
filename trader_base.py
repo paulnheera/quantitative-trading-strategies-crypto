@@ -33,7 +33,7 @@ class TraderBase(object):
     =======
     '''
     
-    def __init__(self, conf_file, exchange, symbol, interval, leverage=None, sl=None, tp=None, verbose=True):
+    def __init__(self, conf_file, exchange, symbol, interval, strategy=None, leverage=None, sl=None, tp=None, verbose=True):
         
         self.conf_file =conf_file
         self.exchange = exchange
@@ -340,11 +340,15 @@ class TraderBase(object):
                                'high':'High',
                                'low':'Low',
                                'close':'Close',
-                               'turnover':'Turnover'
+                               'turnover':'Turnover',
+                               'confirm':'Confirm'
                               }, inplace=True)
         
         # Convert time column to datetime
-        df['Time'] = pd.to_datetime(df['Time'], unit='s')
+        df['Time'] = pd.to_datetime(df['Time'], unit='ms')
+        
+        # Filter for confirm bar only
+        df = df[df['Confirm']==True]
         
         # Set Time column to index
         df.set_index('Time', inplace=True)
@@ -358,12 +362,16 @@ class TraderBase(object):
         
         return df
     
+    def print_kline(self,msg):
+        df = self.msg_to_df(msg)
+        print(df)
+    
     
 if __name__ == '__main__':
     trader = TraderBase(conf_file='algo_trading.cfg',
                     exchange='bybit',
                     symbol='SOLUSDT',
-                    interval=60)
+                    interval=1)
     
     # tb.get_data(100)
     trader.get_quote()
