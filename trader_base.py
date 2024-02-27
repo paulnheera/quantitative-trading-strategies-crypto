@@ -39,6 +39,7 @@ class TraderBase(object):
         self.exchange = exchange
         self.symbol = symbol
         self.interval = interval
+        self.strategy = strategy
         self.leverage = 1
         self.sl = sl
         self.tp = tp
@@ -365,6 +366,13 @@ class TraderBase(object):
     def print_kline(self,msg):
         df = self.msg_to_df(msg)
         print(df)
+        
+    def start_trading(self):
+        # Start the websocket stream
+        # Set the callback function to strategy.process_new_data
+        self.ws.kline_stream(interval=self.interval,
+                             symbol=self.symbol,
+                             callback=self.strategy.process_new_data)
     
     
 if __name__ == '__main__':
